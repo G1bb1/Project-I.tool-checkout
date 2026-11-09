@@ -1,0 +1,35 @@
+{
+  "camera": {
+    "index": 0,
+    "width": 1280,
+    "height": 720,
+    "warmup_frames": 30,
+    "flush_frames": 5,
+    "average_frames": 5,
+    "lock_exposure": true,
+    "exposure": -6,
+    "disable_autofocus": true
+  },
+  "features": {
+    "blur_sigma": 2.0,
+    "shift_tolerance_px": 10
+  },
+  "calibration": {
+    "captures": 12,
+    "tools_lifted_per_capture": 3,
+    "k_sigma": 4.0,
+    "structure_floor": 0.05,
+    "colour_floor": 6.0
+  },
+  "trials": {
+    "seed": null,
+    "checkout_mode": "per_trial",
+    "show_window": true,
+    "time_limit_s": 3.0
+  },
+  "notify": {
+    "enabled": false,
+    "watch_ip": "192.168.1.50",
+    "watch_port": 4210
+  }
+}
