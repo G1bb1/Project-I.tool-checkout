@@ -1,7 +1,6 @@
 {
   "_note": "One entry per slot, in the order you will draw the slots (row by row, left to right). Edit names to match your logbook.",
   "tools": [
-    "Super glue pack",
     "Measuring tape",
     "Wire stripper",
     "Pliers",
@@ -12,17 +11,26 @@
     "Tweezers",
     "Flathead screwdriver",
     "Knife",
-    "Drill bit kit",
-    "Multimeter",
     "Painter's tape",
-    "Electrical tape",
-    "Level"
+    "Electrical tape"
   ],
   "lookalike_pairs": [
-    ["Wire stripper", "Wire cutter"],
-    ["Wire cutter", "Nippers"],
-    ["Wire stripper", "Nippers"],
-    ["Painter's tape", "Electrical tape"]
+    [
+      "Wire stripper",
+      "Wire cutter"
+    ],
+    [
+      "Wire cutter",
+      "Nippers"
+    ],
+    [
+      "Wire stripper",
+      "Nippers"
+    ],
+    [
+      "Painter's tape",
+      "Electrical tape"
+    ]
   ],
   "perturbations": [
     "Lift {tool} and put it back in its slot (not perfectly aligned)",
