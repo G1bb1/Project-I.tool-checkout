@@ -7,14 +7,16 @@ Order of use (each step saves its output, so you can stop between steps):
   python main.py calibrate                freeze thresholds from complete-kit captures
   python main.py run --removal 90 --swap 30 --complete 60
   python main.py analyze <session_id>     summary tables for the report
+  python main.py watch-serve              answer checks the watch starts (link test)
 """
 import argparse
+import sys
 from datetime import datetime
 
 import cv2
 
 from toolcheck.camera import Camera
-from toolcheck.paths import (REFS, SLOTS_FILE, CURRENT_REFS_FILE, load_settings, load_kit,
+from toolcheck.paths import (DATA, REFS, SLOTS_FILE, CURRENT_REFS_FILE, load_settings, load_kit,
                              load_slots, load_json, save_json, current_refs_dir)
 
 
@@ -37,6 +39,14 @@ def cmd_preview(args):
     cam.close()
     cv2.destroyAllWindows()
 
+def cmd_exposure(args):
+    from toolcheck.exposure import run_exposure_check
+    s = load_settings()
+    cam = Camera(s["camera"])
+    try:
+        run_exposure_check(cam, s["camera"])
+    finally:
+        cam.close()
 
 def cmd_define_slots(args):
     s, kit = load_settings(), load_kit()
@@ -111,6 +121,20 @@ def cmd_run(args):
         cam.close()
 
 
+def cmd_watch_serve(args):
+    from toolcheck.watch_server import serve
+    s, slots = load_settings(), load_slots()
+    refs = _load_refs()
+    thr_file = refs["dir"] / "thresholds.json"
+    if not thr_file.exists():
+        raise SystemExit("No thresholds for the current references. Run: python main.py calibrate")
+    cam = Camera(s["camera"])
+    try:
+        serve(cam, slots, refs, load_json(thr_file), s)
+    finally:
+        cam.close()
+
+
 def cmd_analyze(args):
     from toolcheck.analyze import summarise
     summarise(args.session)
@@ -120,6 +144,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("preview").set_defaults(fn=cmd_preview)
+    sub.add_parser("exposure").set_defaults(fn=cmd_exposure)
     sub.add_parser("define-slots").set_defaults(fn=cmd_define_slots)
     sub.add_parser("capture-refs").set_defaults(fn=cmd_capture_refs)
     sub.add_parser("calibrate").set_defaults(fn=cmd_calibrate)
@@ -128,11 +153,47 @@ def main():
     r.add_argument("--swap", type=int, default=30)
     r.add_argument("--complete", type=int, default=60)
     r.set_defaults(fn=cmd_run)
+    sub.add_parser("watch-serve").set_defaults(fn=cmd_watch_serve)
     a = sub.add_parser("analyze")
     a.add_argument("session")
     a.set_defaults(fn=cmd_analyze)
-    args = p.parse_args()
+    argv = sys.argv[1:]
+    if not argv:
+        argv = menu()
+    args = p.parse_args(argv)
     args.fn(args)
+
+
+def menu():
+    """Shown when main.py is run with no command (e.g. PyCharm's Run button)."""
+    steps = [("preview", "check framing (q in the window to quit)"),
+             ("exposure", "pick camera exposure by numbers ([ ] to change, q to quit)"),
+             ("define-slots", "draw one box per tool"),
+             ("capture-refs", "Method B references: full, then empty board"),
+             ("calibrate", "freeze thresholds from complete-kit captures"),
+             ("run", "bench session (asks for trial counts)"),
+             ("analyze", "summarise a session"),
+             ("watch-serve", "answer checks started from the watch (REQ-TR-04 test)")]
+    print("toolcheck: choose a step")
+    for i, (cmd, desc) in enumerate(steps, 1):
+        print(f"  {i}. {cmd:<13} {desc}")
+    choice = input("Number: ").strip()
+    if not choice.isdigit() or not 1 <= int(choice) <= len(steps):
+        raise SystemExit("No valid choice.")
+    cmd = steps[int(choice) - 1][0]
+    if cmd == "run":
+        r = input("  Removal trials [90]: ").strip() or "90"
+        s = input("  Swap trials [30]: ").strip() or "30"
+        c = input("  Complete-kit trials [60]: ").strip() or "60"
+        return ["run", "--removal", r, "--swap", s, "--complete", c]
+    if cmd == "analyze":
+        sessions = sorted(d.name for d in DATA.iterdir() if d.is_dir()) if DATA.exists() else []
+        if not sessions:
+            raise SystemExit("No sessions in data/ yet.")
+        print("  Sessions: " + ", ".join(sessions))
+        sess = input(f"  Session [{sessions[-1]}]: ").strip() or sessions[-1]
+        return ["analyze", sess]
+    return [cmd]
 
 
 if __name__ == "__main__":

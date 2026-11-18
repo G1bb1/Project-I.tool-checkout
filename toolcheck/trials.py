@@ -20,6 +20,7 @@ import cv2
 from .methods import method_a, method_b, outcome
 from .notify import send_result
 from .paths import DATA, save_json
+from .features import gap_mask, lighting_change, retake_reason
 
 TRIAL_FIELDS = [
     "session", "trial", "block", "timestamp", "instruction", "truth",
@@ -129,9 +130,31 @@ def run_session(cam, slots, refs, thresholds, settings, kit, n_removal, n_swap, 
             if input(f"  {step['instruction']}\n  Enter when done: ").strip().lower() == "q":
                 break
 
-            signoff, cap_s = cam.grab()
-            ra = method_a(signoff, checkout, slots, thresholds["A"], blur, shift)
-            rb = method_b(signoff, refs["full"], refs["empty"], slots, thresholds["B"], blur, shift)
+            #signoff, cap_s = cam.grab()
+            #ra = method_a(signoff, checkout, slots, thresholds["A"], blur, shift)
+            #rb = method_b(signoff, refs["full"], refs["empty"], slots, thresholds["B"], blur, shift)
+            rcfg = settings.get("retake", {})
+            use_gate = rcfg.get("enabled", False) and "lighting" in thresholds
+            retakes, first_reason, first_a, first_b, reason = 0, "", "", "", ""
+            while True:
+                signoff, cap_s = cam.grab()
+                ra = method_a(signoff, checkout, slots, thresholds["A"], blur, shift)
+                rb = method_b(signoff, refs["full"], refs["empty"], slots, thresholds["B"], blur, shift)
+                if not use_gate:
+                    break
+                light = lighting_change(signoff, checkout, gap_mask(signoff.shape, slots),
+                                        rcfg["blur_sigma"], rcfg["dark_tol"])
+                n_flag = max(len(ra["flagged"]), len(rb["flagged"]))
+                reason = retake_reason(light, thresholds["lighting"], n_flag, rcfg["max_flagged"])
+                if not reason or retakes >= rcfg["max_retakes"]:
+                    break
+                if retakes == 0:  # keep what the first capture said, so nothing is hidden
+                    first_reason = reason
+                    first_a, first_b = ";".join(ra["flagged"]), ";".join(rb["flagged"])
+                    cv2.imwrite(str(sdir / "images" / f"t{i:03d}_signoff_try1.png"), signoff)
+                retakes += 1
+                input(f"  RETAKE: {reason}\n  Fix the light (move the hand/shadow away), Enter to retake: ")
+            retake_exhausted = int(bool(reason) and retakes >= rcfg.get("max_retakes", 0))
             oa, ob = outcome(step["truth"], ra["flagged"]), outcome(step["truth"], rb["flagged"])
 
             send_result(settings["notify"], "missing" if rb["flagged"] else "complete", rb["flagged"])

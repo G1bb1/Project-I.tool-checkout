@@ -11,7 +11,7 @@ import random
 import statistics
 from datetime import datetime
 
-from .features import slot_scores, structure_distance, crop
+from .features import slot_scores, structure_distance, crop, gap_mask, lighting_change, lighting_limits_from_samples
 from .paths import save_json
 
 
@@ -41,6 +41,9 @@ def run_calibration(cam, slots, refs_dir, ref_full, ref_empty, settings, kit):
 
     input("Kit complete and untouched. Press Enter for the first capture...")
     prev, _ = cam.grab()
+    rc = settings["retake"]
+    gap = gap_mask(prev.shape, slots)
+    light_samples = []
     samples_a, samples_b, rows = [], [], []
     for i in range(n):
         lifted = rng.sample(tools, min(cal["tools_lifted_per_capture"], len(tools)))
@@ -53,6 +56,7 @@ def run_calibration(cam, slots, refs_dir, ref_full, ref_empty, settings, kit):
         for t in tools:
             rows.append([i + 1, t, int(t in lifted), sa[t]["s"], sa[t]["c"],
                          sb[t]["s"], sb[t]["c"]])
+        light_samples.append(lighting_change(img, prev, gap, rc["blur_sigma"], rc["dark_tol"]))
         prev = img
 
     k, sf, cf = cal["k_sigma"], cal["structure_floor"], cal["colour_floor"]
@@ -61,6 +65,7 @@ def run_calibration(cam, slots, refs_dir, ref_full, ref_empty, settings, kit):
            "created": datetime.now().isoformat(timespec="seconds"),
            "rule": f"max(floor, mean + {k} * std) over {n} complete-kit captures",
            "floors": {"s": sf, "c": cf}}
+    thr["lighting"] = lighting_limits_from_samples(light_samples, k, rc["dark_floor"], rc["shift_floor"])
     save_json(refs_dir / "thresholds.json", thr)
 
     with open(refs_dir / "calibration_scores.csv", "w", newline="", encoding="utf-8") as f:
