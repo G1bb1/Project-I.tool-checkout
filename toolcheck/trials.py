@@ -30,6 +30,7 @@ TRIAL_FIELDS = [
     "B_flagged", "B_labels", "B_miss", "B_false_alarm", "B_named_exactly",
     "B_process_s", "B_total_s",
     "void", "void_reason", "note",
+    "retakes", "retake_reason", "retake_exhausted", "first_A_flagged", "first_B_flagged"
 ]
 
 
@@ -200,6 +201,7 @@ def run_session(cam, slots, refs, thresholds, settings, kit, n_removal, n_swap, 
                 "B_named_exactly": ob["named_exactly"], "B_process_s": f"{rb['process_s']:.4f}",
                 "B_total_s": f"{cap_s + rb['process_s']:.4f}",
                 "void": void, "void_reason": reason, "note": note,
+                "retakes": retakes, "retake_reason": first_reason, "retake_exhausted": retake_exhausted, "first_A_flagged": first_a, "first_B_flagged": first_b
             })
             for t in tools:
                 sw.writerow([i, t, int(t in step["truth"]),
