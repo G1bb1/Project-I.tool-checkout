@@ -1,0 +1,43 @@
+{
+  "_note": "One entry per slot, in the order you will draw the slots (row by row, left to right). Edit names to match your logbook.",
+  "tools": [
+    "Measuring tape",
+    "Wire stripper",
+    "Pliers",
+    "Scissors",
+    "Box cutter",
+    "Wire cutter",
+    "Nippers",
+    "Tweezers",
+    "Flathead screwdriver",
+    "Knife",
+    "Painter's tape",
+    "Electrical tape"
+  ],
+  "lookalike_pairs": [
+    [
+      "Wire stripper",
+      "Wire cutter"
+    ],
+    [
+      "Wire cutter",
+      "Nippers"
+    ],
+    [
+      "Wire stripper",
+      "Nippers"
+    ],
+    [
+      "Painter's tape",
+      "Electrical tape"
+    ]
+  ],
+  "perturbations": [
+    "Lift {tool} and put it back in its slot (not perfectly aligned)",
+    "Nudge {tool} about 1 cm inside its slot",
+    "Rotate {tool} slightly (about 10 degrees) inside its slot",
+    "Cast a hand shadow over part of the board during capture",
+    "Move a second lamp or open a curtain to change room light",
+    "No change (repeat check of an untouched complete kit)"
+  ]
+}
