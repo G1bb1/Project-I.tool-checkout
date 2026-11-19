@@ -7,8 +7,17 @@
     "flush_frames": 5,
     "average_frames": 5,
     "lock_exposure": true,
-    "exposure": -6,
+    "exposure": -4,
     "disable_autofocus": true
+  },
+  "retake": {
+  "enabled": true,
+  "max_flagged": 3,
+  "max_retakes": 2,
+  "dark_tol": 0.15,
+  "blur_sigma": 8.0,
+  "dark_floor": 0.02,
+  "shift_floor": 0.05
   },
   "features": {
     "blur_sigma": 2.0,
@@ -19,7 +28,7 @@
     "tools_lifted_per_capture": 3,
     "k_sigma": 4.0,
     "structure_floor": 0.05,
-    "colour_floor": 6.0
+    "colour_floor": 0.1
   },
   "trials": {
     "seed": null,
