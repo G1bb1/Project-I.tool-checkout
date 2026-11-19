@@ -173,7 +173,7 @@ def menu():
              ("calibrate", "freeze thresholds from complete-kit captures"),
              ("run", "bench session (asks for trial counts)"),
              ("analyze", "summarise a session"),
-             ("watch-serve", "answer checks started from the watch (REQ-TR-04 test)")]
+             ("watch-serve", "answer checks started from the watch (REQ-TR-04 test) (Currently disabled)")]
     print("toolcheck: choose a step")
     for i, (cmd, desc) in enumerate(steps, 1):
         print(f"  {i}. {cmd:<13} {desc}")
