@@ -7,7 +7,7 @@
     "flush_frames": 5,
     "average_frames": 5,
     "lock_exposure": true,
-    "exposure": -4,
+    "exposure": -5,
     "disable_autofocus": true
   },
   "retake": {

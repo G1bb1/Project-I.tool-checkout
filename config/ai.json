@@ -59,7 +59,10 @@
     "clear_confidence": 0.90,
     "colour_only_clear_confidence": 0.60,
     "_note_v3": "v3 (2026-11-19, after hybrid session hybrid-20261118-232906): a slot Method A flagged on COLOUR only (shape score under its frozen limit) is cleared when the AI names its own tool at >= colour_only_clear_confidence. Look-alike slots still need clear_confidence.",
-    "ai_can_clear_a_flags": true
+    "ai_can_clear_a_flags": true,
+    "clear_confidence_by_tool": {"Wire stripper": 0.90, "Wire cutter": 0.90},
+    "clear_confidence_default": 0.60,
+    "_note_poc": "PoC version (Nov 20, Gib): the bar for the AI to cancel Method A's flag is set PER TOOL. Tools listed in clear_confidence_by_tool keep their own bar (Wire stripper / Wire cutter look alike, so 0.90). Every other tool (incl. Nippers, both tapes, Measuring tape) uses clear_confidence_default, for shape AND colour flags. These two keys replace clear_confidence / colour_only_clear_confidence for clearing; delete them to get the v3 rule back. Unsure (< min_confidence) and wrong-tool flags are unchanged. Freeze before the run."
   },
 
   "absent_tools": ["Flathead screwdriver"],
