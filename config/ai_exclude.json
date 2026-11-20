@@ -1,0 +1,9 @@
+{
+  "_note": "Trials whose photos are NOT labelled correctly by the script's plan (operator error), so import-trials must skip them. Voided trials are skipped automatically. Entries below were pre-filled from your own trials.csv notes: CONFIRM each one, then delete this line's warning. Session ids are the toolcheck data/ folder names.",
+  "exclude": [
+    {"session": "20261117-220424", "trial": 14,
+     "reason": "Your note: trial 13's stripper/cutter swap was not undone before trial 14, so the checkout and sign-off photos do not match the plan."},
+    {"session": "20261117-220424", "trial": 16,
+     "reason": "Your note: trial 15 (stripper/nippers swap) was not restored before trial 16."}
+  ]
+}
