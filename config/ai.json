@@ -1,0 +1,96 @@
+{
+  "_note": "Freeze every value in this file BEFORE a held-out evaluation or a hybrid trial session. Changing one after seeing results = dated logbook entry + new session.",
+
+  "lookalike_pairs": [
+    ["Wire stripper", "Wire cutter"],
+    ["Wire cutter", "Nippers"],
+    ["Wire stripper", "Nippers"],
+    ["Painter's tape", "Electrical tape"]
+  ],
+  "crop_margin": 0.10,
+  "input_size": 96,
+  "collect_mix": {"complete": 0.30, "removal": 0.40, "swap": 0.30},
+  "epochs": 60,
+  "seed": 0,
+
+  "pink": {
+    "enabled": false,
+    "_note_nopink": "NO-PINK VERSION: pink is not measured or removed, and `pink` does not need to be run. The tool is found by comparing each slot with the empty-board photo (board.tool_only), so the shadow is greyed out anyway.",
+    "_note": "Pink pixels (the paper shadows) are painted neutral grey before the model sees a crop, so it cannot learn the shadow outline instead of the tool. Run `python ai_main.py pink` to measure YOUR pink from refs/<current>/empty.png; these defaults are only used until then.",
+    "hue_deg": 0.0,
+    "hue_tol_deg": 18.0,
+    "min_chroma": 10.0,
+    "fill": 128
+  },
+
+  "board": {
+    "_note": "What the model sees of each slot. footprint: keep only the slot's own pink shadow (from refs/<dir>/empty.png of that session) grown by grow_px; the floor and neighbouring tools are painted grey. exposure: scale each colour channel so the bare paper between slots has median `target` (evens out exposure -6 vs -4 and white-balance drift). Run `pink` BEFORE import-trials.",
+    "footprint": {"enabled": false, "grow_px": 20},
+    "exposure": {"enabled": true, "target": 215},
+    "tool_only": {"enabled": true, "diff": 35, "shift_px": 6, "min_area_px": 40, "window_px": null,
+                  "empty_share": 0.01, "max_ref_mismatch": 0.05,
+                  "_note2": "empty_share: a slot whose changed area is under this share of its box is EMPTY by rule (confidence 1.0), the model is not asked. max_ref_mismatch: hybrid warns at the first checkout when more than this share of the bare paper no longer matches the empty-board photo (retake capture-refs).",
+                  "_note": "The model sees ONLY the tool: pixels that differ from the same slot on the empty-board photo, inside the slot's footprint, placed in a same-size grey window centred on the tool. No pink, no shadow outline, no slot shape, so it cannot tell which slot it is looking at. window_px null = 1.15 x the largest slot side."}
+  },
+
+  "training": {
+    "_note": "exclude_swap_crops: a tool sitting in ANOTHER tool's slot (pink shows around it) is left out of TRAINING; it stays in the held-out evaluation, which is the honest swap test. skip_suspects: crops whose label disagrees with the photo (see dataset/<session>/suspects.png) are left out of training AND evaluation, and counted. Add any other bad crop to config/ai_bad_crops.txt (one crop path per line, e.g. tc-20261112-212119/crops/t005_signoff_03.png).",
+    "exclude_swap_crops": true,
+    "skip_suspects": true
+  },
+
+  "augment": {
+    "copies": 4,
+    "_note": "Extra training copies per crop with random lighting (brightness, colour temperature, a soft shadow) and small placement changes. Training sessions only; never applied to evaluation crops.",
+    "brightness": [0.6, 1.3],
+    "gamma": [0.8, 1.25],
+    "colour_temp": 0.08,
+    "shadow_prob": 0.5,
+    "shadow_strength": [0.4, 0.8],
+    "rotate_deg": 8,
+    "shift": 0.05,
+    "glare_prob": 0.3,
+    "glare_size": [0.1, 0.35]
+  },
+
+  "decision": {
+    "_note": "Confidence limits for the hybrid. Pick them from the validation numbers train prints, BEFORE evaluating on the held-out session.",
+    "min_confidence": 0.60,
+    "clear_confidence": 0.90,
+    "colour_only_clear_confidence": 0.60,
+    "_note_v3": "v3 (2026-11-19, after hybrid session hybrid-20261118-232906): a slot Method A flagged on COLOUR only (shape score under its frozen limit) is cleared when the AI names its own tool at >= colour_only_clear_confidence. Look-alike slots still need clear_confidence.",
+    "ai_can_clear_a_flags": true
+  },
+
+  "absent_tools": ["Flathead screwdriver"],
+  "_note_absent_tools": "Tools NOT in the kit this session (e.g. left at school). Their slot stays EMPTY: never used in a removal or swap, expected empty at checkout and sign-off, and flagged if anything is put in it. The model keeps all 12 classes (trained on sessions 1-3). Hybrid session only; replay of old sessions ignores it. Set back to [] when the tool is back.",
+
+  "plan": {
+    "cycle_perturbations": true,
+    "_note": "true = the complete-kit trials go through EVERY perturbation in the kit file (lift, nudge, rotate, hand shadow, second lamp, no change) before repeating one, in a shuffled order. false = toolcheck's random pick per trial (the hand shadow never came up in hybrid-20261118-232906)."
+  },
+
+  "lighting_override": {
+    "enabled": true,
+    "_note": "Retake check says the light changed, but the model names every slot's own tool with at least this confidence: accept the photo instead of asking for a retake. mode all_own = only when the kit looks complete (your trial 27 idea); all_confident = also when the model confidently names a missing or wrong tool.",
+    "_note_v3": "v3 (2026-11-19): mode shape_ok = the light changed, Method A's SHAPE score is under its limit in every slot, and the AI's top answer is the own tool in every slot at >= confidence. In session hybrid-20261118-232906 Measuring tape / Wire stripper / Box cutter never reached 0.90 even in normal light, so all_own at 0.90 could never fire.",
+    "mode": "shape_ok",
+    "confidence": 0.60
+  },
+
+  "retake": {
+    "_note": "max_retakes null = use toolcheck's settings.json value. skip_many_slot_retake_if_ai_confident: 3+ flagged slots with NO lighting change and every flagged slot confidently named = report them, no retake (your trial 14 note).",
+    "max_retakes": null,
+    "skip_many_slot_retake_if_ai_confident": true
+  },
+
+  "checkout_check": {
+    "enabled": true,
+    "_note": "Classify every checkout photo; if a slot does not hold its own tool, stop before the trial (catches a previous swap not undone, as in session 3 trials 14 and 16)."
+  },
+
+  "test_mode": {
+    "allow_force_accept": false,
+    "_note": "TESTS ONLY. true adds 'f = force-accept this photo' at every retake prompt. Forced trials are marked forced=1 and reported separately. Never enable for watch-serve or a real sign-off."
+  }
+}
