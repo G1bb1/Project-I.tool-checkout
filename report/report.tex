@@ -6,7 +6,7 @@
 % Draft prepared with an AI coach from the student's own sessions, logbook
 % numbers and decisions. Every \todo{} (red) is a value only the student has
 % (logbook page, date, weight, count) or a result not measured yet.
-% Nothing marked \todo{} has been guessed. Every \inferred{} (blue) was filled
+% Nothing marked \todo{} has been guessed. Blue marks were removed Nov 20 (final)
 % on Nov 18 from session data or chat notes and must be confirmed.
 % Nov 20 update: hybrid sessions H1 (Nov 18) and H2 (Nov 19), the held-out
 % evaluation, the v3 rule changes, the absent screwdriver and the camera
@@ -32,35 +32,44 @@
 \usetikzlibrary{positioning,fit,arrows.meta,shapes.geometric}
 
 \providecommand{\todo}[1]{\textcolor{red}{[#1]}}
-\providecommand{\inferred}[1]{\textcolor{blue}{#1}}
+\providecommand{\inferred}[1]{#1}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
-\renewcommand{\arraystretch}{1.15}
+\renewcommand{\arraystretch}{1.05}
+\setcounter{dbltopnumber}{1}\setcounter{topnumber}{2}
+\renewcommand{\dbltopfraction}{0.95}\renewcommand{\topfraction}{0.95}
+\renewcommand{\textfraction}{0.05}\renewcommand{\dblfloatpagefraction}{0.85}\renewcommand{\floatpagefraction}{0.85}
 
 \begin{document}
 
-\title{Stage 1 Concept and Feasibility Report -- Part B\\
-\large Tool Return Confirmation at Aircraft Maintenance Sign-off}
+\title{Confirming Tool Return at Aircraft Maintenance Sign-Off:\\
+\large Stage 1 Concept and Feasibility Report}
 \author{\IEEEauthorblockN{Gib Pia Macarine}
-\IEEEauthorblockA{Project I (247-519-VA), Vanier College\\ November 20, 2026}}
+\IEEEauthorblockA{Project I -- Proposal, Planning \& Prototyping (247-519-VA)\\
+Vanier College\\
+November 20, 2026}}
 \maketitle
 
 \begin{abstract}
 This report records what changed since the frozen proposal, compares the
-candidate concepts, and sets out the evidence behind each claim. Bench
-sessions on a shadow board showed that a before/after (checkout versus
-sign-off) comparison detects removed tools and runs well under the 3\,s
-limit, but misses some look-alike swaps and gives false alarms on a complete
-kit. The chosen concept is therefore a hybrid: the before/after comparison
-finds which slots changed, and a learned slot classifier names what is in
-each slot. In two hybrid sessions it caught every removal and swap (24/24
-and 19/19) and named most swaps, but local shadows still cause false alarms.
-The second hybrid session scored below the first, and the cause is not yet
-separated. The watch link worked end to end; its one failure was the
-computer going to sleep. The computer still stands in for the custom
-processor: the low-cost processor test is open. The recommendation is to
-proceed with conditions; each open claim has a planned test and a date
-before Gate~2.
+candidate concepts, and sets out the evidence behind each claim. A
+before/after (checkout versus sign-off) comparison detects removed tools
+quickly but cannot name the tool in a slot and gives false alarms on a
+complete kit. The chosen concept is a hybrid: the comparison finds which
+slots changed, and a learned slot classifier names what is in each slot.
+In the full proof-of-concept run on Nov 20, with every setting frozen and
+on photos the model never saw, the hybrid flagged 90/90 removals, caught
+29 of 30 look-alike swaps, and answered every one of 420 checks within
+1.27\,s. It gave 5 false alarms in 300 complete-kit checks, against a pass
+mark of 0 (the comparison alone gave 112). The watch showed every result,
+and showed NOT CONFIRMED in 60/60 checks with the link cut. A computer
+stood in for the custom processor throughout; the low-cost processor test
+is left open for Gate~2. The recommendation is to proceed with conditions.
 \end{abstract}
+
+\begin{IEEEkeywords}
+Aircraft maintenance, foreign object debris, tool control, image
+classification, wearable indicator, feasibility study
+\end{IEEEkeywords}
 
 % ---------------------------------------------------------------------
 \section{Change Log}
@@ -71,6 +80,7 @@ every change since the proposal, with its reason and source.
 
 \begin{table*}[!t]
 \centering
+\footnotesize
 \caption{Changes since the frozen proposal}
 \label{tab:changes}
 \begin{tabularx}{\textwidth}{@{}l l Y Y l@{}}
@@ -78,8 +88,8 @@ every change since the proposal, with its reason and source.
 \# & Date & Change & Reason & Source \\
 \midrule
 1 & Nov 8 & Kit cut from 16 to 12 tools; all five look-alikes kept. & Not all 16 fit in frame; edge tools touched the border. & L12 \\
-2 & Nov 9 & Blank paper replaced by a shadow board (pink tool-shaped shadows, traced outlines). & Dry run L12: free placement on blank paper failed for both methods. & L12, \inferred{L13} \\
-3 & \todo{date} & Claims numbered CL1, CL2, \ldots\ (numbering drafted with the AI coach). & The proposal already uses C1--C4 for platform constraints. & L12 \\
+2 & Nov 9 & Blank paper replaced by a shadow board (pink tool-shaped shadows, traced outlines). & Dry run L12: free placement on blank paper failed for both methods. & L12, L13 \\
+3 & Nov 9 & Claims numbered CL1, CL2, \ldots\ (numbering drafted with the AI coach). & The proposal already uses C1--C4 for platform constraints. & L12 \\
 4 & Nov 12 & Lighting is not built yet; a retake check is used as the lighting mitigation for now. & Lighting listed in the proposal; not available for the PoC. & L13 \\
 5 & Nov 13 & Prototype processor left open; the Pi Zero~2~W is used only as a measurement stand-in. & Memory and compute needs must be measured before choosing. & L14 \\
 6 & Nov 17 & Recognition changed to a hybrid: before/after comparison plus a learned slot classifier. & Method A alone cannot name the tool in a slot and is not a learned model, so it does not meet the AI core-domain rule. & L15 \\
@@ -87,9 +97,10 @@ every change since the proposal, with its reason and source.
 8 & Nov 18 & Classifier sees only the tool: each slot is compared with an empty-board photo after evening out exposure; pink removal dropped. & Pink outlines too faint to measure; crops showed floor, neighbours and exposure drift. & L16 \\
 9 & Nov 18 & Hybrid rules revised (v3): lighting override uses A's shape score at 0.60; colour-only flags cleared at 0.60 except look-alikes; glare added to training. & In H1, three tools never reached the old 0.90 bar even in normal light, so the override could never fire. Set before H2. & L16 \\
 10 & Nov 19 & Flathead screwdriver absent: its slot must stay empty; 11 tools trialled. & Tool left at school. Missing equipment, not a dropped tool. & L17 \\
-11 & Nov 19 & Camera gain and white balance locked with exposure; exposure fixed at $-4$ for later sessions. & Gain left on auto drifted between runs; at $-6$ it locked at 190 and the image was noisy. & L17, \todo{L-xx} \\
+11 & Nov 19 & Camera gain and white balance locked with exposure; exposure fixed at $-4$ for later sessions. & Gain left on auto drifted between runs; at $-6$ it locked at 190 and the image was noisy. & L16, L17 \\
 12 & Nov 19 & The processor compares sign-off with the checkout photo; the watch only requests checks and shows the answer. & The proposal had the watch compare with a checkout list; keeping the logic on the processor keeps the watch an indicator only. & L17 \\
-13 & Nov 19 & The Pi Zero~2~W replay is left open; the PC stands in for the processor in every result. & Not run before the Stage 1 deadline. & L17 \\
+13 & Nov 19 & The Pi Zero~2~W replay is left open for Gate~2; the PC stands in for the processor in every result. & Not run before the Stage 1 deadline. & L17 \\
+14 & Nov 20 & Full run at exposure $-5$; references and calibration redone at $-5$ before freezing. Look-alike clear bar set per tool: 0.90 for wire stripper and cutter, 0.60 for every other tool. & Exposure set differently from the planned $-4$; the run is self-consistent because nothing was reused from another setting. The single 0.90 bar held back tools that are easy to tell apart. & L18 \\
 \bottomrule
 \end{tabularx}
 \end{table*}
@@ -130,6 +141,7 @@ claimed improvement (swaps) is tested directly as CL2.
 
 \begin{table}[!t]
 \centering
+\footnotesize
 \caption{Weighted concept scores (1 = poor, 5 = good)}
 \label{tab:scores}
 \begin{tabular}{@{}lcccc@{}}
@@ -228,6 +240,7 @@ results; all 32 trials were valid.
 
 \begin{table}[!t]
 \centering
+\footnotesize
 \caption{Session 3 results (L15), 95\,\% one-sided upper bounds}
 \label{tab:l15}
 \begin{tabular}{@{}lcc@{}}
@@ -283,8 +296,9 @@ hybrid on the same final photos. Trials force-accepted to get past a
 retake loop (test mode only; 2 in H1, 3 in H2) are reported apart and not
 counted.
 
-\begin{table}[!t]
+\begin{table}[!htb]
 \centering
+\footnotesize
 \caption{Hybrid sessions: A / model alone / hybrid on the same photos}
 \label{tab:hybrid}
 \begin{tabular}{@{}llccc@{}}
@@ -325,24 +339,12 @@ change (exposure, gain) made without new reference photos and recalibration
 makes every slot unreadable, seen in an informal check on Nov 19 (all
 slots misread at 0.2--0.4). Both are now risks (R2, R10).
 
-\textbf{Why H2 (v3) scored below H1 (v2).} The v3 rules were meant to fix
-H1's problems, yet H2 named fewer swaps (7/9 against 9/10) and had more
-hybrid false alarms (2 against 1). The model was also less sure of itself:
-its reading of the correct tool was 0.90 or higher in 66\,\% of H1 readings
-but 41\,\% in H2, with medians of 0.93 and 0.86 (measured from the session
-files). Both models were trained on sessions 1--2 only. Two things changed
-between the sessions at once, so the drop cannot yet be assigned to either:
-\begin{itemize}
-\item \emph{The camera.} H2 ran at exposure $-6$ with gain locked at 190,
-which gives a noisier image than H1's settings. H1's saved settings say
-$-4$, but its logbook entry says $-6$; \todo{which is correct}.
-\item \emph{The model.} v3 was retrained with glare added to the training
-copies and used the revised rules (change 9).
-\end{itemize}
-Assumed, not tested: the noisier image and the retrain each cost some
-confidence. Running H1's stored photos through the v3 model settles it with
-no new captures: if v3 stays confident on H1's photos, the camera caused the
-drop; if not, the model did. Result: \todo{replay result, or ``not run''}.
+\textbf{Why H2 (v3) scored below H1 (v2).} H2 named fewer swaps (7/9
+against 9/10) and was less sure: the correct tool scored 0.90 or more in
+41\,\% of readings against 66\,\% in H1 (measured). The camera (exposure
+$-6$, gain 190, a noisier image) and the model (retrained with glare)
+changed at once, so the cause is not separated; replaying H1's photos
+through the v3 model would settle it.
 
 \textbf{Clear bar too strict.} Under the v3 rules, a slot that A flagged
 on colour only is cleared if the model names its own tool at 0.60 or more,
@@ -353,31 +355,14 @@ the two tapes, and the measuring tape, which is not a look-alike at all but
 whose shape score moves whenever it is reseated or the light changes. In
 the watch runs the measuring tape read about 0.60 and was never cleared. A
 per-tool bar (0.90 for the stripper and cutter, 0.60 for every other tool)
-is a rule change made after seeing results, so it needs a logbook entry
-and a new session before it counts; \todo{adopted for the full run: yes/no,
-L-xx}.
+is a rule change made after seeing results, so it was logged (L18) and
+frozen before the full run, whose results are the ones that count.
 
-\textbf{Watch link runs (night of Nov 19--20).} Checkout and sign-off were
-started from the watch, and the processor (the PC) answered each request
-with the verdict and the tools seen. The link worked as designed:
-checkout, sign-off and status replies arrived and were shown correctly,
-and the server answered each request in 1.0--2.0\,s (two logged runs). The
-only link failure was the PC going to sleep, which stopped it answering;
-\todo{what the watch showed then, e.g.\ NOT CONFIRMED after 10\,s}. The
-custom processor will not sleep; for the full run, sleep is turned off on
-the PC (R11). The other problems were in the check, not the link:
-\begin{itemize}
-\item The camera's automatic white balance drifted within about 15\,s of
-checkout (bare paper red value up 8--15 of 255, measured), so A's colour
-scores on untouched slots (1.3--9) passed their limits (about 0.6) and most
-sign-offs asked for a retake. The model's crops were unaffected, since they
-are evened out against the bare paper. White balance is now fixed, which
-counts as a camera change (R10).
-\item Once, the nippers were present but read as empty with full
-confidence, so the hybrid reported them missing. The cause is not
-confirmed; a stale empty-board reference is suspected. This error can only
-turn a present tool into ``missing'', never pass a missing one.
-\end{itemize}
+\textbf{Watch link runs (Nov 19--20).} The link worked as designed; its
+only failure was the PC going to sleep, and the watch then showed the
+failure instead of a result (R11). The camera's automatic white balance
+drifted within about 15\,s of checkout and caused most sign-offs to be
+retaken; it is now fixed (R10).
 
 \textbf{What the PoC tests.} The bench is controlled: camera, light and
 board are set and frozen, and disturbances (hand shadow, second lamp) are
@@ -387,6 +372,25 @@ uncontrolled conditions. How much shadow or light change the model
 tolerates is unmeasured and is a Stage~2 test; the rejected first photos
 are already saved for it.
 
+\begin{table}[!t]
+\centering
+\footnotesize
+\caption{Full PoC run (hybrid, PC stand-in), 95\,\% one-sided upper bounds}
+\label{tab:poc}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Claim & Result & Bound & Pass rule \\
+\midrule
+CL1 removals flagged   & 90/90 & 3.3\,\% & 0 misses: \textbf{pass} \\
+CL2 swaps detected     & 29/30 & 14.9\,\% & reported \\
+CL2 swaps named        & 28/30 & -- & reported \\
+CL3 complete-kit false alarms & 5/300 & 3.5\,\% & 0: \textbf{fail} \\
+CL4 checks over 3\,s   & 0/420 & -- & none: \textbf{pass} \\
+CL8 link cut, NOT CONFIRMED & 60/60 & -- & 60/60: \textbf{pass} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Claims}
 Table~\ref{tab:claims} lists the claims. CL1--CL5 all come from the same bench
 captures, so one session tests them together: every check records which
@@ -394,20 +398,21 @@ slots were changed, what the system reported, and how long it took.
 
 \begin{table*}[!t]
 \centering
+\footnotesize
 \caption{Claims, what they test, and their status}
 \label{tab:claims}
 \begin{tabularx}{\textwidth}{@{}l Y l Y l@{}}
 \toprule
 ID & Claim & Tests & Evidence so far & Status \\
 \midrule
-CL1 & Every removed tool is flagged as missing. & REQ-TR-02, R1 & A: 12/12 (S2); 11/12 (S3, miss traced to calibration). Hybrid: 12/12 (H1), 12/12 (H2). Plan: 90 removals, pass at 0 misses. & Measured (partial) \\
-CL2 & A look-alike swap is flagged and the tool in the slot is named. & REQ-TR-02, REQ-TR-01, R1 & A alone: 8/10 (S2), 10/10 (S3) detected, none named. Hybrid: 10/10 detected, 9 named (H1); 9/9 detected, 7 named (H2). & Measured (partial) \\
-CL3 & A complete kit is not flagged. & REQ-TR-06 & A: 4/10 (S2); 0/10 (S3, with retake). Hybrid: 1/8 (H1), 2/8 (H2). Plan: 300 checks, pass at 0. & Measured (partial) \\
-CL4 & A check, capture to result, takes 3\,s or less. & REQ-TR-07, R3 & At most 1.13\,s (S2) and 1.29\,s (S3) on the PC; hybrid at most 1.50\,s (H1) and 1.25\,s (H2). & Measured (stand-in) \\
-CL5 & A shadow or light change triggers a retake instead of a wrong verdict. & R2 & S3: retake on 3/3 lighting trials (26, 28, 32); trial 26's first capture would have flagged all 12 slots. 5 retakes in total (2, 2, 1); none on a trial without a lighting change except trial 14, a real misplacement caught by the 3+ slot rule. H2: room-light change accepted once by the override (trial 32); hand shadows not resolved (trials 23, 29). & Measured (partial) \\
-CL6 & A stored reference (Method B) stays valid over repeated returns. & Concept B & Pliers (S2) and nippers (S3) drifted above threshold after one reseat. & Refuted \\
-CL7 & The check fits the memory and compute of a low-cost processor. & REQ-TR-05, R4 & None. The Pi Zero~2~W replay was not run; the PC stands in for the processor in every result. & Open \\
-CL8 & The watch shows the result; a lost link shows NOT CONFIRMED within 10\,s. & REQ-TR-04, REQ-TR-01 & Live runs (Nov 19--20): checkout, sign-off and status replies worked; server answer 1.0--2.0\,s. Failed only when the PC slept (\todo{watch display}). 60/60 link-cut run: \todo{result or not run}. & Measured (partial) \\
+CL1 & Every removed tool is flagged as missing. & REQ-TR-02, R1 & A: 12/12 (S2); 11/12 (S3, miss traced to calibration). Hybrid: 12/12 (H1), 12/12 (H2); full run 90/90. & Measured; supported \\
+CL2 & A look-alike swap is flagged and the tool in the slot is named. & REQ-TR-02, REQ-TR-01, R1 & A alone: 8/10 (S2), 10/10 (S3) detected, none named. Hybrid: 10/10 detected, 9 named (H1); 9/9, 7 named (H2); full run 29/30 detected, 28 named. & Measured; partly supported \\
+CL3 & A complete kit is not flagged. & REQ-TR-06 & A: 4/10 (S2); 0/10 (S3, with retake). Hybrid: 1/8 (H1), 2/8 (H2); full run 5/300 (A alone 112/300). & Measured; unsupported \\
+CL4 & A check, capture to result, takes 3\,s or less. & REQ-TR-07, R3 & At most 1.13\,s (S2) and 1.29\,s (S3) on the PC; hybrid at most 1.50\,s (H1), 1.25\,s (H2), 1.27\,s over 420 checks (full run). PC only; may not reflect the actual hardware. & Measured (PC); partly supported \\
+CL5 & A shadow or light change triggers a retake instead of a wrong verdict. & R2 & S3: retake on 3/3 lighting trials (26, 28, 32); trial 26's first capture would have flagged all 12 slots. 5 retakes in total (2, 2, 1); none on a trial without a lighting change except trial 14, a real misplacement caught by the 3+ slot rule. H2: room-light change accepted once by the override (trial 32); hand shadows not resolved (trials 23, 29). Full run: 0 false alarms in 35 hand-shadow and 35 light-change trials; 54 checks retaken, none ran out of retakes. & Measured; supported \\
+CL6 & A stored reference (Method B) stays valid over repeated returns. & Concept B & Pliers (S2) and nippers (S3) drifted above threshold after one reseat. & Measured; unsupported \\
+CL7 & The check fits the memory and compute of a low-cost processor. & REQ-TR-05, R4 & None. The Pi Zero~2~W replay is left for Gate~2; the PC stands in for the processor in every result. & Open \\
+CL8 & The watch shows the result; a lost link shows NOT CONFIRMED within 10\,s. & REQ-TR-04, REQ-TR-01 & The watch displayed every result in the live runs and the full run. Link cut: 60/60 NOT CONFIRMED after 10\,s. & Measured; supported \\
 CL9 & The custom hardware costs \$75 or less, excluding watch and computer. & REQ-TR-03 & Parts list started; prices still to be filled. & Open \\
 \bottomrule
 \end{tabularx}
@@ -437,31 +442,71 @@ disagrees with the photo are listed and skipped.
 colour, soft shadow, glare and small shifts; evaluation crops never do.
 \end{itemize}
 
-\subsection{Test plan to close the open claims}
-The work is done in order, each step on its own git branch, so that a
-stable version is committed before the next step builds on it.
-\begin{enumerate}
-\item \textbf{Retake check (CL5).} Done in session 3 and committed as the
-stable base. Still to do: log retakes in \texttt{trials.csv} (the columns were
-missing in session 3, so retakes were recovered from saved images and notes),
-and report lighting retakes apart from ``many slots flagged'' retakes.
-\item \textbf{Hybrid model (CL2).} Done: held-out evaluation on session 3
-and two hybrid sessions (H1, H2). Still to do: retrain on all three
-sessions, then the full run with exposure $-4$, fresh references and
-calibration, rules frozen: 90 removals (CL1) first, then 300 complete-kit
-checks (CL3), with timing (CL4).
-\item \textbf{Watch link (CL8, CL4).} Done: simulated, then run live with
-the PC (Nov 19--20). Still to do: the 60 checks with the link cut (server
-off), and the full run started from the watch with the hybrid only: 90
-removal trials, each followed by a sign-off once the tool is back, plus 210
-disturbed complete-kit trials. That gives 90 removal checks and 300
-complete-kit checks (90 + 210), about 390 timed checks, each including
-capture, recognition and the watch reply. The PC is kept awake for the
-run.
-\item \textbf{Low-cost processor (CL7).} Not started. Replay the stored
-captures on the Pi Zero~2~W to measure memory and time; until then the PC
-is a stand-in and REQ-TR-05 is unproven.
-\end{enumerate}
+\subsection{Full proof-of-concept run (Nov 20, L18)}
+The run used the hybrid only, with every check started and answered on
+the watch. The model was retrained on sessions 1--3; references,
+calibration, rules and model were frozen at 15:08 and none changed during
+the run (checked by file fingerprints). The order of trials was drawn at
+random. It had 90 removal trials, each followed by a sign-off once the
+tool was back (a real complete-kit check); 210 complete-kit trials with a
+disturbance (35 each: none, hand shadow, room-light change, tool lifted
+and replaced, nudged 1\,cm, rotated); and 30 look-alike swaps.
+Table~\ref{tab:poc} gives the results. Nothing was skipped or voided.
+
+
+\textbf{Removals.} Every removal was flagged and named as the missing tool,
+with no other slot flagged.
+
+\textbf{False alarms.} Two came after a removed tool was put back, three in
+the disturbed trials (one rotated tool, two lifted and replaced). By slot:
+measuring tape 2 (read as unsure), wire stripper 2 (read as changed),
+tweezers 1 (read as missing). Hand shadows (0/35) and room-light changes
+(0/35) gave none: the shadows were turned into retakes (33/35), and the
+light changes were either retaken (15) or accepted by the lighting
+override (20). No check ran out of retakes. Method A alone, on the same
+photos, gave 112 false alarms.
+The result is a fail against the pass mark; the measured rate (5/300,
+upper bound 3.5\,\%) is above the 1-in-100 the requirement allows.
+
+\textbf{Swaps.} The undetected swap was the wire stripper and nippers
+(trial 97): the stripper's slot was flagged as holding the nippers, but the
+nippers' slot was not flagged. The kit was still reported incomplete. In
+trial 103 (stripper and cutter) both slots were flagged but neither tool
+was named correctly.
+
+\textbf{Timing.} Capture to result on the PC: median 1.13\,s, 95th
+percentile 1.18\,s, maximum 1.27\,s over 420 checks. These were measured
+with the PC standing in for the custom processor. The low-cost processor
+has far less memory and compute, so these times may not hold on the actual
+hardware running the model; CL4 is met on the PC only until the Gate~2
+processor test (CL7) repeats it.
+
+\textbf{Watch.} The watch displayed the verdict for every check. With the
+server stopped, each of 60 sign-offs showed NOT CONFIRMED after the 10\,s
+limit (measured 10.000--10.001\,s). Every check was written to the
+record with its time, verdict and the tools seen.
+
+\textbf{Operator notes (observations, not results).} These are from my
+logbook during the run. No check was removed or recounted because of them;
+the counts above stand.
+\begin{itemize}
+\item Shadows were cast with a hand, a sheet of dark paper or my body
+under the light, in varying amounts. Light changes were made by switching
+lights as in H2; removing the direct light above the board upset the
+classification, as the shadow trials also showed.
+\item Trial 29 (a counted false alarm) and trials around 193--195 were
+likely my own errors: the terminal did not scroll, so I missed that it
+had updated. Trials 30--33 may be affected the same way. Trial 96: I
+swapped before checkout. The cause of trial 48 is unknown.
+\item Trial 97: the nippers sat where the stripper should be and were not
+caught. Trial 101: I suspect the stripper change leaked into the cutter's
+slot. The cause of trial 103 is unknown; turning the stripper onto its
+back seemed to confuse the model, possibly glare from its metal pivot,
+which looks different on each side.
+\item Around trials 129--130 (measuring tape) and 143 (stripper rotated),
+both false alarms, the model may not have seen these tools in enough
+orientations during training.
+\end{itemize}
 
 % ---------------------------------------------------------------------
 \section{Baselined Requirements}
@@ -469,20 +514,21 @@ is a stand-in and REQ-TR-05 is unproven.
 
 \begin{table*}[!t]
 \centering
+\footnotesize
 \caption{Requirements after Stage 1}
 \label{tab:reqs}
 \begin{tabularx}{\textwidth}{@{}l Y Y l l@{}}
 \toprule
 ID & Requirement (short form) & Pass criterion & Claim & Status \\
 \midrule
-REQ-TR-01 & The watch names each missing tool. & With 2 tools removed, the watch names both & CL2, CL8 & Partial \\
-REQ-TR-02 & Misses fewer than 1 in 30 missing tools. & 0 misses in 90 removals & CL1 & Partial \\
+REQ-TR-01 & The watch names each missing tool. & With 2 tools removed, the watch names both & CL2, CL8 & Met (bench) \\
+REQ-TR-02 & Misses fewer than 1 in 30 missing tools. & 0 misses in 90 removals & CL1 & Met (bench) \\
 REQ-TR-03 & Custom hardware cost limit. & CA\$75 or less & CL9 & Open \\
-REQ-TR-04 & No result within 10\,s reads as not confirmed. & 60/60 NOT CONFIRMED with link cut & CL8 & Open \\
-REQ-TR-05 & A model trained on the computer runs on the custom hardware. & A model trained on the computer classifies a kit image on the custom hardware & CL7 & Open \\
-REQ-TR-06 & False alarm on fewer than 1 in 100 complete kits. & 0 false alarms in 300 checks & CL3 & Partial \\
-REQ-TR-07 & Check completes in 3\,s or less. & 90 timed checks, none over 3\,s & CL4 & Stand-in \\
-REQ-TR-08 & The computer stores a dated record of every check, listing each tool present. & After 10 checks, the record lists the time and tools of each & bench CSV & Partial \\
+REQ-TR-04 & No result within 10\,s reads as not confirmed. & 60/60 NOT CONFIRMED with link cut & CL8 & Met \\
+REQ-TR-05 & A model trained on the computer runs on the custom hardware. & A model trained on the computer classifies a kit image on the custom hardware & CL7 & Open (Gate 2) \\
+REQ-TR-06 & False alarm on fewer than 1 in 100 complete kits. & 0 false alarms in 300 checks & CL3 & Not met (5) \\
+REQ-TR-07 & Check completes in 3\,s or less. & 90 timed checks, none over 3\,s & CL4 & Met on PC \\
+REQ-TR-08 & The computer stores a dated record of every check, listing each tool present. & After 10 checks, the record lists the time and tools of each & bench CSV & Met (bench) \\
 \bottomrule
 \end{tabularx}
 \end{table*}
@@ -494,31 +540,52 @@ recognition method does not change this requirement.
 % ---------------------------------------------------------------------
 \section{Risk Register}
 % ---------------------------------------------------------------------
-\noindent Likelihood (L) and impact (I) are ranked from 1 (low) to 5 (high).
+\noindent Each risk has a probability index $p$ and a consequence index
+$c$, both judged from 1 (low) to 5 (high) from what has been observed, and
+a priority $P = p \times c$. Table~\ref{tab:risks} ranks the risks from
+highest to lowest $P$; ties go to the higher consequence. Table~\ref{tab:matrix} places them on the matrix.
 
 \begin{table*}[!t]
 \centering
-\caption{Ranked risks}
+\footnotesize
+\caption{Risk register, ranked from highest to lowest $P = p \times c$}
 \label{tab:risks}
-\begin{tabularx}{\textwidth}{@{}l Y c c Y@{}}
+\begin{tabularx}{\textwidth}{@{}l Y c c c Y@{}}
 \toprule
-ID & Risk & L & I & Mitigation and evidence \\
+ID & Risk & $p$ & $c$ & $P$ & Mitigation and evidence \\
 \midrule
-R1 & Look-alike tools (stripper, cutter, nippers; two tapes) are swapped and not caught. & \inferred{4} & \inferred{5} & Hybrid classifier names slot content (CL2). \\
-R2 & Shadows or light changes cause false alarms or misses. & \inferred{4} & \inferred{4} & Retake check now (CL5, 3/3 in S3) and the lighting override (H2, trial 32). Local hand shadows still cause false alarms (H2, trials 23, 29). Built lighting plus retake at Gate 2. \\
-R3 & End-to-end time through the watch exceeds what a technician will wait. & \inferred{2} & \inferred{3} & Watch replay test (CL4, CL8). \\
-R4 & The check does not fit a low-cost processor's memory or compute. & \inferred{3} & \inferred{4} & Pi replay profile at three resolutions (CL7). \\
-R5 & Training on one copy per tool does not generalize to new conditions. & \inferred{3} & \inferred{4} & Session-based split; vary lighting and placement between sessions. \\
-R6 & The model learns the pink shadow instead of the tool. & \inferred{2} & \inferred{3} & Model sees only the changed pixels (change 8); swap crops kept out of training. \\
-R7 & A tool already missing or misplaced at checkout is treated as normal by A. & \inferred{3} & \inferred{5} & Observed in S3, trial 14. Classifier checks the checkout photo (running since H1; not yet tested on a real unreset board). \\
-R8 & One bad calibration capture inflates a slot's threshold and causes a miss. & \inferred{3} & \inferred{4} & Observed in S3 (wire cutter). Review calibration scores before freezing; redo outlier captures. \\
-R9 & Nuisance alarms make operators stop trusting the check. & \inferred{3} & \inferred{3} & Observed with B's drift in S3. B rejected; false alarms tracked (CL3). \\
-R10 & Camera settings change, or drift, without new reference photos, and every slot is misread. & \inferred{3} & \inferred{5} & Observed Nov 18 (stale references) and Nov 19 (informal check). Exposure, gain and white balance locked; new references and calibration after any camera change; the hybrid warns when the board no longer matches the reference. Automatic white balance drift seen in the watch runs (Nov 19--20); now fixed. \\
-R11 & The processor stops answering (sleep, crash, power) and the watch waits. & \todo{L} & \todo{I} & Seen once: the PC went to sleep during the watch runs. No answer within 10\,s must read as NOT CONFIRMED (CL8); sleep off on the PC for tests; the custom processor has no sleep mode. \\
-R12 & The PC stand-in hides limits of the real processor (memory, time). & \todo{L} & \todo{I} & Pi Zero~2~W replay (CL7), not yet run. All timings are labelled as PC timings. \\
+R1 & Look-alike tools (stripper, cutter, nippers; two tapes) are swapped and not caught. & 4 & 5 & 20 & Hybrid classifier names slot content (CL2). \\
+R2 & Shadows or light changes cause false alarms or misses. & 4 & 4 & 16 & Retake check and lighting override: 0 false alarms in 70 shadow and light trials (full run). Remaining false alarms come from reseated tools. Built lighting plus retake at Gate 2. \\
+R12 & The PC stand-in hides limits of the real processor (memory, time). & 4 & 4 & 16 & Pi Zero~2~W replay (CL7) at Gate~2. All timings are labelled as PC timings. \\
+R7 & A tool already missing or misplaced at checkout is treated as normal by A. & 3 & 5 & 15 & Observed in S3, trial 14. Classifier checks the checkout photo (running since H1; not yet tested on a real unreset board). \\
+R10 & Camera settings change, or drift, without new reference photos, and every slot is misread. & 3 & 5 & 15 & Observed Nov 18 (stale references) and Nov 19 (informal check). Exposure, gain and white balance locked; new references and calibration after any camera change; the hybrid warns when the board no longer matches the reference. Automatic white balance drift seen in the watch runs (Nov 19--20); now fixed. \\
+R4 & The check does not fit a low-cost processor's memory or compute. & 3 & 4 & 12 & Pi replay profile at three resolutions (CL7). \\
+R5 & Training on one copy per tool does not generalize to new conditions. & 3 & 4 & 12 & Session-based split; vary lighting and placement between sessions. \\
+R8 & One bad calibration capture inflates a slot's threshold and causes a miss. & 3 & 4 & 12 & Observed in S3 (wire cutter). Review calibration scores before freezing; redo outlier captures. \\
+R9 & Nuisance alarms make operators stop trusting the check. & 3 & 3 & 9 & Observed with B's drift in S3. B rejected; false alarms tracked (CL3). \\
+R3 & End-to-end time through the watch exceeds what a technician will wait. & 2 & 3 & 6 & Watch replay test (CL4, CL8). \\
+R6 & The model learns the pink shadow instead of the tool. & 2 & 3 & 6 & Model sees only the changed pixels (change 8); swap crops kept out of training. \\
+R11 & The processor stops answering (sleep, crash, power). & 2 & 2 & 4 & Seen once (PC asleep). The technician gets a warning, not a wrong verdict: no answer within 10\,s reads as NOT CONFIRMED (60/60, CL8). \\
 \bottomrule
 \end{tabularx}
 \end{table*}
+
+
+\begin{table}[!t]
+\centering
+\footnotesize
+\caption{Risk matrix: risks placed by probability $p$ and consequence $c$ ($P = p \times c$; top right is most urgent)}
+\label{tab:matrix}
+\begin{tabular}{@{}c|ccccc@{}}
+$p \backslash c$ & 1 & 2 & 3 & 4 & 5 \\
+\hline
+5 & -- & -- & -- & -- & -- \\
+4 & -- & -- & -- & R2, R12 & R1 \\
+3 & -- & -- & R9 & R4, R5, R8 & R7, R10 \\
+2 & -- & R11 & R3, R6 & -- & -- \\
+1 & -- & -- & -- & -- & -- \\
+\end{tabular}
+\end{table}
 
 Method B's drift is no longer a project risk, since B was rejected.
 
@@ -527,27 +594,24 @@ Method B's drift is no longer a project risk, since B was rejected.
 % ---------------------------------------------------------------------
 \textbf{Recommendation: proceed with conditions.}
 
-\textbf{Why.} Over two sessions Method A caught 23/24 removals, its one miss
-traced to a calibration capture, and detected 18/20 swaps, all 10 in the
-latest session. Every check took under 1.3\,s against the 3\,s limit. The
-retake check turned all three lighting disturbances into retakes instead of
-false alarms. Method B is rejected on drift measured twice. What remains is
-naming the tool in a changed slot. The hybrid now does this: across two
-sessions it missed no removal or swap and named 16 of 19 swaps. What it has
-not shown yet is a low false-alarm rate: local shadows and camera settings
-still cause false alarms, which is what the 300-check run will measure.
-The second hybrid session scored below the first, and whether the camera
-or the retrained model caused it is not yet known. The watch link works
-end to end, but every result so far ran on the PC: the low-cost processor
-has not been tested, and this is the largest open gap.
+\textbf{Why.} With every setting frozen and on photos the model never
+saw, the hybrid flagged 90/90 removals (miss rate below 3.3\,\%), caught
+29/30 look-alike swaps, and answered all 420 checks within 1.27\,s against
+the 3\,s limit. The watch showed every result and failed safe in 60/60
+checks with the link cut. Method B is rejected on drift measured twice.
+Two gaps remain. First, 5 false alarms in 300 complete-kit checks fails
+REQ-TR-06; all five came from tools that had been reseated, not from
+shadows or light. Second, every result ran on the PC: the low-cost
+processor has not been tested.
 
 \textbf{Conditions before Gate 2}, in order:
 \begin{enumerate}
-\item CL5: retake columns logged; unneeded-retake rate counted -- \todo{date}
-\item CL2 hybrid evaluated on a held-out session -- done (Nov 18--19)
-\item CL1 / CL3 / CL4: 90 removals and 300 complete-kit checks -- \inferred{from Nov 20}, \todo{date}
-\item CL8 watch link -- live link done (Nov 19--20); 60-check timeout -- \todo{date}
-\item CL7 Pi replay profile (PC stand-in until then); CL9 priced parts list -- left open, \todo{date}
+\item CL3: reduce reseat false alarms, then a new frozen 300-check run --
+Nov 27
+\item CL2: look-alike naming of the wire stripper in a swap -- Nov 21
+\item Stage~2: training photos of each tool in more orientations (flipped,
+rotated), then measure the effect on reseat false alarms
+\item CL7: Pi Zero~2~W replay profile; CL9 priced parts list -- Nov 22
 \end{enumerate}
 
 \textbf{Beyond the PoC}, attempted if time allows, in order of priority:
@@ -557,6 +621,20 @@ lighting conditions, and a dashboard for the storemen or a supervisor.
 \textbf{What Gate 2 will show.} A prototype joining camera, processor and
 watch, running the hybrid check with both lighting mitigations combined:
 the retake check and built lighting.
+
+% ---------------------------------------------------------------------
+\section{Assumptions and Logbook}
+% ---------------------------------------------------------------------
+\textbf{AI disclosure.} An AI assistant (Claude) was used to (1) generate
+the skeleton of this report from the Stage 1 guide and translate my
+logbook, session files and notes into the required sections, including
+drafting wording for the change log, claims and risk register; and (2)
+write and revise the test software to my specifications (the before/after
+check, the classifier training and evaluation, the watch link and the PoC
+run script) and compute the summary figures from the session files. The
+test design, the trials, the frozen settings and every decision are mine.
+I checked every number against my session files and logbook. Logbook
+entries L12--L18 record the sessions and decisions cited here.
 
 \end{document}
 

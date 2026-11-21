@@ -330,7 +330,7 @@ class WatchLink:
                                             for t, v in (res["A"].get("scores") or {}).items()}),
                     "H_flagged": json.dumps(flagged),
                     "H_labels": json.dumps(labels),
-                    "AI_contents": json.dumps({t: f"{n}@{c:.2f}" for t, (n, c) in zip(self.tools, res["ai"])}),
+                    "AI_contents": json.dumps({t: f"{n}@{c:.3f}" for t, (n, c) in zip(self.tools, res["ai"])}),
                     "retake_category": res["retake_category"],
                     "lighting_override": res["lighting_override"]})
         if res["retake_reason"] and self.tries <= self.max_retakes:

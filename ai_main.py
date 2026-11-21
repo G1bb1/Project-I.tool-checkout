@@ -128,7 +128,7 @@ def cmd_check(a):
         r["flag"] = r["flag"] or unsure
         if unsure and not r["reason"]:
             r["reason"] = "unsure"
-        print(f"  {'FLAG' if r['flag'] else ' ok '}  {r['slot']:<22} sees: {r['content']}  ({r['confidence']:.2f})"
+        print(f"  {'FLAG' if r['flag'] else ' ok '}  {r['slot']:<22} sees: {r['content']}  ({r['confidence']:.3f})"
               + ("  UNSURE" if unsure else ""))
     flagged = [r for r in res if r["flag"]]
     print("KIT CONFIRMED" if not flagged else

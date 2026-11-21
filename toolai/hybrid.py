@@ -45,27 +45,48 @@ def _shape_ok(a_scores, thr_a, tool):
     return sc is not None and tool in thr_a and sc["s"] <= thr_a[tool]["s"]
 
 
+def fmt_conf(c):
+    """Confidence for screens and logs, rounded DOWN: 0.596 prints as 0.59, never as 0.60,
+    so a printed value at the limit always means the limit was reached."""
+    return f"{int(c * 100) / 100:.2f}"
+
+
+def clear_bar(tool, dcfg, colour_only=False, lookalikes=()):
+    """Confidence the AI needs (own tool named) to cancel Method A's flag on this slot.
+
+    PoC version (Nov 20): per tool. decision.clear_confidence_by_tool lists the strict tools
+    (e.g. Wire stripper / Wire cutter at 0.90); every other tool uses
+    decision.clear_confidence_default, for shape AND colour flags. Without those keys the
+    v3 rule is used: clear_confidence for every slot, lowered to colour_only_clear_confidence
+    for colour-only flags on slots outside the look-alike pairs."""
+    by_tool = dcfg.get("clear_confidence_by_tool")
+    if by_tool is not None:
+        return float(by_tool.get(tool, dcfg.get("clear_confidence_default", dcfg["clear_confidence"])))
+    bar = dcfg["clear_confidence"]
+    colour_clear = dcfg.get("colour_only_clear_confidence")
+    if colour_only and colour_clear is not None and tool not in lookalikes:
+        bar = min(bar, colour_clear)
+    return bar
+
+
 def slot_verdicts(tools, a_flagged, ai, dcfg, a_scores=None, thr_a=None, lookalikes=(), expected=None):
     """expected: slot -> what it should hold (own tool, or EMPTY for an absent tool)."""
     expected = expected or {t: t for t in tools}
     rows = []
-    colour_clear = dcfg.get("colour_only_clear_confidence")
     for tool, (content, conf) in zip(tools, ai):
         a = tool in a_flagged
         colour_only = a and _shape_ok(a_scores, thr_a or {}, tool)
-        bar = dcfg["clear_confidence"]
-        if colour_only and colour_clear is not None and tool not in lookalikes:
-            bar = min(bar, colour_clear)
+        bar = clear_bar(tool, dcfg, colour_only, lookalikes)
         r = {"slot": tool, "ai": content, "conf": conf, "a_flag": a, "flag": False,
              "label": "", "cleared_by_ai": False}
         own = expected.get(tool, tool)
         if conf < dcfg["min_confidence"]:
-            r.update(flag=True, label=f"unsure (AI {conf:.2f}: {content}?)")
+            r.update(flag=True, label=f"unsure (AI {fmt_conf(conf)}: {content}?)")
         elif content != own:
             r.update(flag=True, label=(f"should be empty (tool absent this session): {content}" if own == EMPTY
                                        else "missing" if content == EMPTY else f"wrong tool: {content}"))
         elif a and not (dcfg.get("ai_can_clear_a_flags", True) and conf >= bar):
-            r.update(flag=True, label=f"changed (AI {conf:.2f}: own tool, not sure enough to clear)")
+            r.update(flag=True, label=f"changed (AI {fmt_conf(conf)}: own tool, under its {bar:.2f} clear bar)")
         elif a:
             r["cleared_by_ai"] = True
         rows.append(r)
@@ -131,7 +152,8 @@ def check_capture(signoff, checkout, slots, thresholds, settings, pred, ai_cfg, 
             r["a_flag"] = r["slot"] in ra["flagged"]
             r["cleared_by_ai"] = r["a_flag"] and not r["flag"]
 
-    named = all(r["conf"] >= ai_cfg["decision"]["clear_confidence"] for r in rows if r["a_flag"])
+    named = all(r["conf"] >= clear_bar(r["slot"], ai_cfg["decision"], False, _lookalike_slots(ai_cfg))
+                for r in rows if r["a_flag"])
     many_named = many and not lreason and named and ai_cfg["retake"].get("skip_many_slot_retake_if_ai_confident", False)
 
     reasons, cats = [], []
