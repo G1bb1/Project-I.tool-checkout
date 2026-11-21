@@ -11,6 +11,8 @@ Camera check that every tool in a 12-tool kit is back on its pink shadow board a
 - **The watch link** (`watch_main.py`) lets the watch start checkout and sign-off. The
   processor (the PC as stand-in) runs the hybrid and sends back the verdict; the watch only
   displays it, and shows NOT CONFIRMED if no answer arrives within 10 s.
+- **The PoC runner** (`poc_main.py`) is one menu from references to results for the full
+  hybrid-only run, with the watch starting every check (section 10).
 - **Method B** (stored full/empty references) stays in the code for comparison only. It is
   rejected as a design choice because it drifts after a tool is reseated (CL6 refuted).
 
@@ -29,9 +31,10 @@ Camera check that every tool in a 12-tool kit is back on its pink shadow board a
 4. Check that everything runs without the webcam:
    - `python -m tests.test_pipeline` (should end with `session: run + analyze OK`)
    - `python -m tests.test_toolai` (about 10 min; ends with `OK: import -> ... -> summary all ran`)
+   - `python -m tests.test_poc` (synthetic PoC run: plan, retake, resume, UDP loop, results)
    - `python -m tests.test_watch_link` (ends with `OK: replay link logic, live link logic, UDP round trip + report, server-off timeout all ran.`)
 
-`python main.py` and `python ai_main.py` with no command (or PyCharm's Run button) show a
+`python main.py`, `python ai_main.py` and `python poc_main.py` with no command (or PyCharm's Run button) show a
 numbered menu of the steps below.
 
 The synthetic tests prove only that the code runs. Their accuracy is not evidence.
@@ -64,7 +67,8 @@ the day, is in `FROZEN_SETTINGS_Nov20.md`.
 
 **Camera.** DirectShow exposure is log2 seconds: −4 is about 1/16 s and −6 about 1/64 s.
 - At −6 the camera makes up brightness with gain. On Nov 19 it locked at gain 190, and the
-  image was noisy and the results worse. Use **−4**.
+  image was noisy and the results worse. Use **−4**. (The Nov 20 PoC run used −5, with its own
+  references and calibration; logbook L18.)
 - `exposure_mode`:
   - `"fixed"` sets `exposure`, and also `gain` and `wb_temperature` if you give them.
   - `"settle_lock"` leaves exposure, gain and white balance on auto for `settle_s` seconds
@@ -92,8 +96,10 @@ seeing results, write a dated logbook entry, then run a new session.
 | `board.exposure` | on, target 215 | Each colour channel scaled so the bare paper matches in every session |
 | `board.tool_only` | on | The model sees only pixels that differ from `refs/<dir>/empty.png` |
 | `decision.min_confidence` | 0.60 | Below this a slot is flagged "unsure" |
-| `decision.clear_confidence` | 0.90 | Confidence needed to cancel A's flag (look-alike slots) |
-| `decision.colour_only_clear_confidence` | 0.60 | Cancel A's flag when A flagged on colour only (non-look-alike slots) |
+| `decision.clear_confidence_by_tool` | Wire stripper, Wire cutter: 0.90 | PoC version: confidence needed to cancel A's flag for these tools (shape or colour flag) |
+| `decision.clear_confidence_default` | 0.60 | PoC version: the same for every other tool. Replaces the two keys below when present |
+| `decision.clear_confidence` | 0.90 | v3: confidence needed to cancel A's flag (shape flags and look-alike slots) |
+| `decision.colour_only_clear_confidence` | 0.60 | v3: cancel A's flag when A flagged on colour only (non-look-alike slots) |
 | `lighting_override` | `shape_ok`, 0.60 | See "How the hybrid decides" |
 | `absent_tools` | `["Flathead screwdriver"]` | Tool not in the kit this session (left at school) |
 | `plan.cycle_perturbations` | true | Complete-kit trials use every perturbation, including the hand shadow, before repeating one |
@@ -190,9 +196,14 @@ python ai_main.py replay data/<session>  # A vs hybrid on a stored session's pho
 | confidence < 0.60 | either | **FLAG** "unsure" |
 | not the expected content | either | **FLAG** "wrong tool: X", "missing", or "should be empty" |
 | expected content | not flagged | ok |
-| expected content, ≥ 0.90 | flagged | ok, "cleared by AI" (tool reseated) |
-| expected content, ≥ 0.60, A flagged on **colour only**, not a look-alike slot | flagged | ok, cleared |
+| expected content, ≥ the tool's clear bar | flagged | ok, "cleared by AI" (tool reseated) |
 | otherwise | flagged | **FLAG** "changed" |
+
+The clear bar (PoC version) is 0.90 for the Wire stripper and Wire cutter, which really look
+alike, and 0.60 for every other tool, for shape and colour flags. In v3 it was 0.90 for any shape
+flag and for look-alike slots, and 0.60 only for colour-only flags on other slots; that kept the
+Nippers, both tapes and the Measuring tape flagged even when the model named them. Confidences
+print rounded down (0.596 shows as 0.59) and are logged with 3 decimals.
 
 The model can raise a flag that A missed. It can cancel A's flag only when it is sure. When
 either side is unsure, the slot is flagged.
@@ -260,6 +271,9 @@ data/<session>/              toolcheck session: session.json, trials.csv, slot_s
 data/hybrid-<stamp>/         hybrid session: session.json (incl. ai_config, thresholds, camera_locked,
                              absent_tools), trials.csv, slot_results.csv, images/, summary.md
 data/<session>/replay-<model>/   trials.csv, summary.md, replay.json
+data/poc-<stamp>/            PoC run: poc_session.json, plan.json, progress.json, poc_checks.csv (one row per counted
+                             check), part<k>/ (watch_log.csv, images/), summary.md
+data/poc_frozen.json         hashes recorded by the freeze step
 data/watch-<live|replay>-<stamp>/  watch link: watch_session.json, watch_log.csv (one row per message), images/ (live), summary.md
 dataset/tc-<session>/        imported crops: session.json, manifest.csv (with tags), crops/, preview.png, suspects.png
 models/<stamp>-<type>/       meta.json, train_report.json, model.tflite, model_int8.tflite, model.keras | model.joblib
@@ -351,7 +365,131 @@ the hybrid's flags, A's per-slot scores, the model's reading of each slot, retak
 
 ---
 
-## 10. Older sessions and other tools
+## 10. PoC run (`poc_main.py`)
+
+One menu from references to results. Only the hybrid is used, and the watch starts every check.
+Steps 1–2 run `main.py`, steps 3–6 run `ai_main.py`, step 8 runs the watch server (section 9).
+
+```
+ 1. capture-refs   toolcheck: empty board + full board photos (after ANY camera change)
+ 2. calibrate      toolcheck: freeze Method A thresholds
+ 3. check          one live check, every slot (camera + refs + model look right?)
+ 4. collect        get dataset: labelled captures at today's camera settings
+ 5. import-trials  optional: add old toolcheck sessions to the dataset
+ 6. train          CNN on ALL dataset sessions (the PoC run is the held-out test)
+ 7. freeze         record model + refs + settings; the run refuses silent changes
+ 8. run            PoC run with the watch (new, or resume)
+ 9. timeout        60/60 timeout test with the link cut (server OFF)
+10. results        90 / 300 / 60 table -> summary.md
+```
+
+Before step 1: camera `"exposure_mode": "fixed"`, `"exposure": -4` (the Nov 20 run used −5,
+logged as L18), `"wb_temperature"` set to a number (section 2, `FROZEN_SETTINGS_Nov20.md`). Any camera change after step 1 means doing steps 1 and 2 again.
+Step 7 refuses to freeze with force-accept on, and step 8 stops if ai.json, settings.json,
+slots.json, the refs, the thresholds or the model changed since the freeze (unless you type
+CONTINUE, which is recorded in `poc_session.json`).
+
+### Step 8: what you do
+
+The terminal shows each trial and an arrow on the step you're on, for example:
+
+```
+=== Trial 12/300  REMOVAL   counted so far: removals 11/90, complete-kit 11/300 ===
+     1. Full kit on the board. CHECKOUT on the watch  done
+  -> 2. REMOVE Pliers, then SIGN OFF on the watch
+     3. PUT Pliers BACK in its slot, then SIGN OFF on the watch
+```
+
+- **Removal trial (90):** checkout → remove the named tool → sign off (that is the removal check)
+  → put it back → sign off again (that is a complete-kit check).
+- **Complete trial (210):** checkout → the perturbation shown (lift, nudge, rotate, hand shadow,
+  second lamp, no change; each one used before any repeats) → sign off.
+- **RETAKE:** change nothing and sign off again. Only the final answer of a step counts.
+- **Between trials** the terminal tells you to press or **hold 2 s** for the next checkout (the PC
+  closes the job at the end of each trial).
+- The tool to remove comes from a shuffled round of the 11 tools on the board, so each tool is
+  removed 8 or 9 times. The Flathead screwdriver (absent) is never used.
+- Keep the watch's Serial Monitor open the whole time and save its text at the end of each part as
+  `watch_<session>_part<k>.txt`. Menu 10 reads it for the watch side of CL8.
+- **Stopping and resuming:** Ctrl+C any time. Menu 8 offers `r = resume` for the newest run. A trial
+  that was stopped halfway is listed as *skipped*, not counted, and not hidden. Each resume is a new
+  `part<k>/` folder with its own watch log and photos.
+
+Time: about 30–45 s per trial, so 300 trials take roughly 3 to 3.5 hours without breaks (an estimate).
+
+### The PC going to sleep
+
+- While menu 8 runs, the PC is kept awake (Windows `SetThreadExecutionState`, which also keeps the
+  screen on). Closing the laptop lid can still sleep it, so leave the lid open or set
+  "lid close = do nothing".
+- If the PC still sleeps or freezes for more than 20 s, the server notices when it wakes up. It
+  re-opens the UDP socket and the camera, re-checks the board against the empty-board photo,
+  and prints the PC's IP address. The watch has the PC's IP built into the sketch (`PC_IP`), so
+  if Wi-Fi gives the PC a new address after waking, the watch can't reach it until you change it.
+  A DHCP reservation on the router avoids that.
+- A camera grab that fails is retried once with the camera re-opened. Before, it stopped the server.
+- On Windows, a UDP "port unreachable" left over from an earlier send no longer stops the server.
+- While the PC is asleep the watch shows NOT CONFIRMED after 10 s. That is the fail-safe working,
+  and those presses are counted in the results as lost answers.
+
+### 90 / 300 / 60: what can overlap
+
+- **The 90 removals can't be counted as complete-kit checks.** A removal photo has a tool missing,
+  so it tests the opposite of CL3 ("a complete kit is not flagged").
+- **But each removal trial can give a complete-kit check:** put the tool back and sign off again. That
+  photo really is a complete kit, much like the "lift and put back" perturbation. So **90 removal trials
+  + 210 complete trials = 90 removal checks + 300 complete-kit checks**, in 300 trials. That is the default.
+  Report it as "90 after returning the removed tool + 210 with perturbations". The results table
+  shows the two groups separately, so it's visible if false alarms cluster in one.
+- **Timing (CL4, "90 timed checks")** comes free: every counted sign-off is timed, so about 390.
+- **The 60 can't be inside the 390.** The 60/60 test needs the link cut (server off), and in the live
+  run the link is up. The 390 live sign-offs cover the other half of CL8 (the watch shows the PC's answer,
+  and never KIT CONFIRMED without a `complete` answer). The 60/60 is the `a60` serial command,
+  automatic, about 12 minutes (menu 9).
+
+Every row of `data/poc-<stamp>/poc_checks.csv` is one counted check. Its `criteria` column says what
+it counts toward (`CL1+CL4+CL8`, `CL3+CL4+CL8`, `CL2+CL4+CL8`), and the row has the miss, false alarm,
+name check, Method A alone (for comparison), retakes, override and timings.
+
+### Results (step 10)
+
+`summary.md` in the run folder has this table, with a 95 % upper bound for each rate:
+
+| Claim | Checks | Failures | Pass rule |
+|---|---|---|---|
+| CL1 removal flagged | n/90 | misses | 0 misses in 90 |
+| CL3 complete kit not flagged | n/300 | false alarms | 0 in 300 |
+| CL4 ≤ 3 s (PC) | n | over 3 s | none over 3 s in 90 |
+| CL8 watch | from the watch log | screen ≠ answer, unsafe confirms, lost | 0 unsafe |
+| CL8 link cut | 60 | not NOT CONFIRMED | 60/60 |
+
+It says "not enough checks yet" until the counts are reached, so a partial run can go in the report
+as it is.
+
+### Results of the Nov 20 run (measured)
+
+Run `poc-20261120-151301`, logbook L18. Model `20261120-150449-cnn`, trained on sessions 1–3; refs
+`20261120-145249`; exposure −5. Everything frozen at 15:08 and unchanged during the run (checked by
+file hashes). The model never saw these photos. Nothing was skipped or voided.
+
+| Claim | Requirement | Result | 95 % upper bound | Pass rule | |
+|---|---|---|---|---|---|
+| CL1 removal flagged | REQ-TR-02 | 90/90, all named | 3.3 % | 0 misses in 90 | **pass** |
+| CL2 look-alike swap | REQ-TR-02/01 | 29/30 detected, 28/30 named | 14.9 % | reported | – |
+| CL3 complete kit not flagged | REQ-TR-06 | 5 false alarms in 300 | 3.5 % | 0 in 300 | **fail** |
+| CL4 ≤ 3 s, capture to result (PC) | REQ-TR-07 | 0 of 420 over 3 s; median 1.13 s, max 1.27 s | – | none over 3 s | **pass on PC** |
+| CL8 link cut | REQ-TR-04 | 60/60 NOT CONFIRMED | – | 60/60 | **pass** |
+
+- **Complete-kit checks:** 90 after returning the removed tool (2 false alarms) and 210 with a disturbance (3 false alarms). Hand shadow and room-light change gave 0 false alarms in 35 each. Shadows were retaken (33/35), and light changes were retaken (15) or passed by the lighting override (20). No check ran out of retakes.
+- **False alarms by slot:** Measuring tape 2 (unsure), Wire stripper 2 (changed), Tweezers 1 (missing). All came from tools that had been put back, rotated or lifted, not from shadows or light.
+- **Method A alone** on the same photos: 0 removal misses, 112 complete-kit false alarms.
+- **Swaps:** trial 97 (stripper ↔ nippers) left the nippers' slot unflagged, but the kit was still reported incomplete. In trial 103 (stripper ↔ cutter), both slots were flagged but neither was named.
+- **Timings:** these are on the PC standing in for the custom processor. They may not hold on the real hardware (CL7, Gate 2).
+- **Operator notes:** they are in the logbook (L18) and the report. They are observations only, and no check was recounted because of them.
+
+---
+
+## 11. Older sessions and other tools
 
 **Recovering retake columns** for session `20261117-220424`, which ran before the columns
 existed:
@@ -382,7 +520,7 @@ Use `ai-edge-litert`, not TensorFlow: TensorFlow alone needs more memory than th
 ESP32-S3 Touch AMOLED 2.06. It shows a Wi-Fi scan and a touch-select screen, drawn with
 "GFX Library for Arduino". Arduino IDE settings: board ESP32S3 Dev Module, USB CDC On Boot
 enabled, Flash 32MB, PSRAM OPI PSRAM. It does not talk to `toolcheck`. The watch link to the
-PC is section 9.
+PC is section 9, and the PoC runner section 10.
 
 ---
 
@@ -402,3 +540,17 @@ PC is section 9.
   - Camera settle/fixed lock with gain, exposure −4, and a planner fix.
 - **Nov 20 (watch link):** `watch_main.py`, `toolai/watch_link.py` and the
   `toolcheck_watch_v2` sketch. Checkout and sign-off from the watch, 10 s NOT CONFIRMED.
+- **Nov 20 (PoC runner):** `poc_main.py` and `toolai/poc.py` (plan, freeze, resume, keep-awake,
+  results); clear bar set per tool. Used for run `poc-20261120-151301` (L18).
+
+---
+
+## AI disclosure
+
+An AI assistant (Claude) was used to (1) write and revise the code in this repository to my
+specifications: the Method A check and retake check (`toolcheck`), the slot classifier's import,
+training, evaluation and hybrid decision (`toolai`), the watch link and watch sketch, and the PoC
+runner; and (2) write the synthetic tests. The test design, the trials on the bench,
+the frozen settings, the logbook and every decision are mine. I ran every session myself, and
+every number reported here comes from my own session files, checked against my logbook. The
+synthetic tests show only that the code runs; they are not evidence.
