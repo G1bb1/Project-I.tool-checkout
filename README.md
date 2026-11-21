@@ -8,6 +8,9 @@ Camera check that every tool in a 12-tool kit is back on its pink shadow board a
   or "empty", with a confidence from 0 to 1. It is trained on the PC and exported as
   `.tflite` for the processor (REQ-TR-05).
 - **The hybrid (concept D)** combines both, slot by slot. This is the chosen design.
+- **The watch link** (`watch_main.py`) lets the watch start checkout and sign-off. The
+  processor (the PC as stand-in) runs the hybrid and sends back the verdict; the watch only
+  displays it, and shows NOT CONFIRMED if no answer arrives within 10 s.
 - **Method B** (stored full/empty references) stays in the code for comparison only. It is
   rejected as a design choice because it drifts after a tool is reseated (CL6 refuted).
 
@@ -26,6 +29,7 @@ Camera check that every tool in a 12-tool kit is back on its pink shadow board a
 4. Check that everything runs without the webcam:
    - `python -m tests.test_pipeline` (should end with `session: run + analyze OK`)
    - `python -m tests.test_toolai` (about 10 min; ends with `OK: import -> ... -> summary all ran`)
+   - `python -m tests.test_watch_link` (ends with `OK: replay link logic, live link logic, UDP round trip + report, server-off timeout all ran.`)
 
 `python main.py` and `python ai_main.py` with no command (or PyCharm's Run button) show a
 numbered menu of the steps below.
@@ -245,7 +249,7 @@ For code that calls toolai (for example the watch link), use:
 `python ai_main.py hybrid ... --allow-force`, or set `"test_mode": {"allow_force_accept": true}`.
 Every retake prompt then adds **f = FORCE-ACCEPT this photo**. The trial is marked
 `forced = 1`, and the summary lists it separately, outside the miss and false-alarm tables. It
-exists only in the bench runner, never in `watch-serve` or a real sign-off.
+exists only in the bench runner, never in `watch-serve`, `watch_main.py serve` or a real sign-off.
 
 ---
 
@@ -256,6 +260,7 @@ data/<session>/              toolcheck session: session.json, trials.csv, slot_s
 data/hybrid-<stamp>/         hybrid session: session.json (incl. ai_config, thresholds, camera_locked,
                              absent_tools), trials.csv, slot_results.csv, images/, summary.md
 data/<session>/replay-<model>/   trials.csv, summary.md, replay.json
+data/watch-<live|replay>-<stamp>/  watch link: watch_session.json, watch_log.csv (one row per message), images/ (live), summary.md
 dataset/tc-<session>/        imported crops: session.json, manifest.csv (with tags), crops/, preview.png, suspects.png
 models/<stamp>-<type>/       meta.json, train_report.json, model.tflite, model_int8.tflite, model.keras | model.joblib
     eval-<stamp>/            eval.json, confusion.csv, slot_results.csv
@@ -280,7 +285,73 @@ refs/<stamp>/                full.png, empty.png, thresholds.json, calibration_s
 
 ---
 
-## 9. Older sessions and other tools
+## 9. Watch link (CL8)
+
+The watch starts the two steps of a job; the processor answers with the board status.
+
+1. **Checkout** (press once). The processor takes the checkout photo and the model checks that
+   every slot holds its own tool. Watch: **CHECKOUT OK** (job number, 11/11 tools in place) or
+   **NOT CHECKED OUT** and the slots that are wrong. A bad checkout is never kept as the baseline.
+2. **Sign-off** (press again). The hybrid check against that checkout photo, with the same frozen
+   settings as `ai_main.py hybrid`. Watch: **KIT CONFIRMED**, **MISSING** and the tools
+   (`Pliers: missing`, `Wire cutter: has Nippers`, `Knife: unsure`), **RETAKE** and the reason
+   with the tools seen, or **NO CHECKOUT**.
+3. **No answer in 10 s, or an answer it can't read: NOT CONFIRMED.** Only a `complete` answer
+   for the same check id shows KIT CONFIRMED.
+
+Hold the BOOT button 2 s to force a new checkout (it replaces an open job's baseline). The absent
+screwdriver follows section 6: its slot must be empty and isn't counted (11/11).
+
+The processor compares, not the watch, because the hybrid needs the checkout *photo*. The
+proposal said the watch compares with the checkout list (report change 12, L17).
+
+**Protocol.** UDP JSON on port 4211. Watch → PC `{"cmd": "checkout" | "signoff" | "status", "id"}`;
+PC → watch `{"id", "op", "status", "tools", "present", "total", "job"}`.
+
+**Setup.**
+- `config/settings.json` → `"watch_server": {"listen_port": 4211}`.
+- Windows firewall: allow Python **inbound UDP 4211**, network set to *Private*.
+- PC and watch on the **same 2.4 GHz network**. Find the PC's IP with `ipconfig`.
+- Sketch `watch_firmware/toolcheck_watch_v2/toolcheck_watch_v2.ino`: set `WIFI_SSID`,
+  `WIFI_PASS`, `PC_IP`. Same Arduino IDE board settings as the Oct 30 sketch (below).
+- If the PC gets a new IP after sleeping, the watch can't reach it; a DHCP reservation avoids this.
+- Serial commands on the watch: `c` checkout, `s` sign-off, `q` status, `j10` ten jobs,
+  `a60` the 60/60 timeout run.
+
+**Running it.**
+
+| Step | Command | What it gives |
+|---|---|---|
+| 1 | `python watch_main.py serve --replay data/<session>` + `python watch_main.py sim --jobs 10` | PC only, fake watch; checks the logic |
+| 2 | `python watch_main.py serve --replay data/<session>`, then `j10` on the watch | Link latency without the camera. Not accuracy evidence (the models were trained on those sessions) |
+| 3 | steps 4–6 of section 3, then `python watch_main.py serve` | Live jobs with the camera and the watch button only. Write each job's truth in the logbook |
+| 4 | stop the server, then `a60` on the watch | 60/60 link-cut test (REQ-TR-04) |
+
+After each run, save the Serial Monitor text and run
+`python watch_main.py report data/watch-<live|replay>-<stamp> --serial <file>`
+(for step 4: `python watch_main.py report --serial watch_timeout_<date>.txt --timeout-test`).
+
+**Pass criteria (frozen before the runs).** 60/60 NOT CONFIRMED with the link cut, each ≥ 10 s;
+0 × KIT CONFIRMED without a `complete` answer; the watch screen matches the server answer; with
+2 tools removed the watch names both; sign-off ≤ 3 s press to screen.
+
+**Measured.**
+- Live runs, night of Nov 19–20 (L17): checkout, sign-off and status worked; server answer
+  1.0–2.0 s. The only link failure was the PC going to sleep. Auto white balance drift caused
+  many-slot retakes (a camera issue, fixed with `wb_temperature`).
+- PoC run, Nov 20 (L18): 842 server answers, median 1.10 s, max 2.50 s; the watch displayed every
+  result.
+- Link cut, Nov 20: 60/60 NOT CONFIRMED after 10.000–10.001 s, **pass**.
+- All times are on the PC stand-in and may not hold on the custom processor (CL7, Gate 2).
+
+**Logs.** The watch prints `LOG,<id>,<op>,<start_ms>,<outcome>,<latency_ms>,<detail>`. The server
+writes `watch_log.csv` (one row per message: capture, A, model and total time, the answer, A's and
+the hybrid's flags, A's per-slot scores, the model's reading of each slot, retake reason) and
+`watch_session.json`.
+
+---
+
+## 10. Older sessions and other tools
 
 **Recovering retake columns** for session `20261117-220424`, which ran before the columns
 existed:
@@ -311,7 +382,7 @@ Use `ai-edge-litert`, not TensorFlow: TensorFlow alone needs more memory than th
 ESP32-S3 Touch AMOLED 2.06. It shows a Wi-Fi scan and a touch-select screen, drawn with
 "GFX Library for Arduino". Arduino IDE settings: board ESP32S3 Dev Module, USB CDC On Boot
 enabled, Flash 32MB, PSRAM OPI PSRAM. It does not talk to `toolcheck`. The watch link to the
-PC is on its own branch.
+PC is section 9.
 
 ---
 
@@ -329,3 +400,5 @@ PC is on its own branch.
 - **Nov 20 (v3 update):**
   - `absent_tools`, model-only columns and perturbation cycling.
   - Camera settle/fixed lock with gain, exposure −4, and a planner fix.
+- **Nov 20 (watch link):** `watch_main.py`, `toolai/watch_link.py` and the
+  `toolcheck_watch_v2` sketch. Checkout and sign-off from the watch, 10 s NOT CONFIRMED.
